@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { GameState } from '../types';
+import { useGameStore } from '../store/useGameStore';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -52,7 +53,7 @@ class SocketService {
       this.reconnectAttempts = 0;
 
       // Request initial game state if a game is in progress
-      if (this.currentGameId) {
+      if (this.currentGameId && this.socket) {
         this.socket.emit('requestInitialGameState', { gameId: this.currentGameId });
       }
     });
@@ -87,6 +88,12 @@ class SocketService {
         this.gameStateCallback(state);
       }
     });
+    
+    //Check if the king is in checked
+    this.socket.on('kingInCheck', ({ kingColor }) => {
+      console.log('King in check:', kingColor);
+      useGameStore.getState().setGameState({ checkedKing: kingColor });
+    });
 
     this.socket.on('gameOver', ({ winner }) => {
       console.log('Game over, winner:', winner);
@@ -118,7 +125,7 @@ class SocketService {
     this.socket.emit('joinGame', { gameId });
   }
 
-  makeMove(gameId: string, move: { from: string; to: string }) {
+  makeMove(gameId: string | null | undefined, move: { from: string; to: string }) {
     if (!this.socket) return;
     this.socket.emit('makeMove', { gameId, move });
   }
